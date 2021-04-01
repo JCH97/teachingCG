@@ -2,6 +2,7 @@
 using Rendering;
 using System;
 using static GMath.Gfx;
+using System.Collections.Generic;
 
 namespace Renderer
 {
@@ -10,12 +11,32 @@ namespace Renderer
         static void Main(string[] args)
         {
             Raster render = new Raster(1024, 512);
-            FreeTransformTest(render);
+            MyTransform(render);
+            //FreeTransformTest(render);
             //DrawRoomTest(render);
             render.RenderTarget.Save("test.rbm");
             Console.WriteLine("Done.");
         }
 
+        public static float3[] RandomPositionsInSphereSurface(int N)
+        {
+            float3[] points = new float3[N];
+
+            for (int i = 0; i < N; i++)
+                points[i] = randomInSphere();
+
+            return points;
+        }
+
+        public static float3[] RandomPositionsInCylinderSurface(int N, float _base)
+        {
+            float3[] points = new float3[N];
+
+            for (int i = 0; i < N; i++)
+                points[i] = randomInCylinder(_base);
+
+            return points;
+        }
         public static float3[] RandomPositionsInBoxSurface(int N)
         {
             float3[] points = new float3[N];
@@ -25,6 +46,17 @@ namespace Renderer
 
             return points;
         }
+
+        public static float3[] RandomPositionsInCircleSurface(int N, int pos_z)
+        {
+            float3[] points = new float3[N];
+
+            for (int i = 0; i < N; i++)
+                points[i] = randomInCircle(pos_z);
+
+            return points;
+        }
+
 
         public static float3[] ApplyTransform(float3[] points, float4x4 matrix)
         {
@@ -51,6 +83,66 @@ namespace Renderer
                 result[i] = freeTransform(points[i]);
 
             return result;
+        }
+
+        public static void MyTransform(Raster render)
+        {
+            render.ClearRT(float4(0, 0, 0.2f, 1));
+            int N = 10000;
+            float3[] points_sphere = RandomPositionsInSphereSurface(N);
+
+            float3[] points_cylinder1 = RandomPositionsInCylinderSurface(N/4, 0);//base de la lampara
+            float3[] points_cylinder2 = RandomPositionsInCylinderSurface(N/10, (float)0.2);//tubo 1
+            float3[] points_cylinder3 = RandomPositionsInCylinderSurface(N/10, (float)1.02);//tubo 2
+            float3[] points_circle = RandomPositionsInCircleSurface(N/4, 1);//tapa de la base
+
+
+            //poner la tapa a la base
+            List<float3> Cylinder = new List<float3>(points_cylinder1);
+            Cylinder.AddRange(points_circle);
+            points_cylinder1 = Cylinder.ToArray();
+
+
+            //llevar a escala la base
+            points_cylinder1 = ApplyTransform(points_cylinder1, Transforms.Scale((float)0.8, (float)0.4, (float)0.8));
+
+            //llevar a escala el tubo1
+            points_cylinder2 = ApplyTransform(points_cylinder2, Transforms.Scale((float)0.04, (float)2, (float)0.04));
+
+            //llevar a escala rotar y trasladar el tubo2 
+            points_cylinder3 = ApplyTransform(points_cylinder3, Transforms.Scale((float)0.04, (float)2, (float)0.04));
+            points_cylinder3 = ApplyTransform(points_cylinder3, Transforms.RotateZGrad(-10));
+            points_cylinder3 = ApplyTransform(points_cylinder3, Transforms.RotateXGrad(-10));
+            points_cylinder3 = ApplyTransform(points_cylinder3, Transforms.Translate((float)0.8, (float)0.6, 0));
+
+            //llevar a escala y ubicar la esfera
+            points_sphere = ApplyTransform(points_sphere, Transforms.Scale((float)0.7, (float)0.7, (float)0.7));
+            points_sphere = ApplyTransform(points_sphere, Transforms.Translate((float)0.6,(float)1.8,0));
+
+
+            //poner ambos tubos en la base
+            List<float3> Cylinder2 = new List<float3>(points_cylinder1);
+            Cylinder2.AddRange(points_cylinder2);
+            Cylinder2.AddRange(points_cylinder3);
+            points_cylinder1 = Cylinder2.ToArray();
+
+            //ubicar la figura completa(ya la esfera estaba ubicada)
+            points_cylinder1 = ApplyTransform(points_cylinder1, Transforms.Translate(0, -2, 0));
+
+
+
+            points_sphere = ApplyTransform(points_sphere, Transforms.LookAtLH(float3(5f, 2.6f, 4), float3(0, 0, 0), float3(0, 1, 0)));
+            points_sphere = ApplyTransform(points_sphere, Transforms.PerspectiveFovLH(pi_over_4, render.RenderTarget.Height / (float)render.RenderTarget.Width, 0.01f, 10));
+
+            points_cylinder1 = ApplyTransform(points_cylinder1, Transforms.LookAtLH(float3(5f, 2.6f, 4), float3(0, 0, 0), float3(0, 1, 0)));
+            points_cylinder1 = ApplyTransform(points_cylinder1, Transforms.PerspectiveFovLH(pi_over_4, render.RenderTarget.Height / (float)render.RenderTarget.Width, 0.01f, 10));
+
+
+
+            
+            render.DrawPoints(points_cylinder1);
+            render.DrawPoints(points_sphere);
+
         }
 
         private static void FreeTransformTest(Raster render)
@@ -99,18 +191,18 @@ namespace Renderer
         private static void DrawRoom(Raster raster, float3[] boxPoints, float4x4 transform)
         {
             DrawTable(raster, boxPoints, mul(Transforms.Translate(0, 0, 0), transform));
-            DrawTable(raster, boxPoints, mul(Transforms.RotateRespectTo(float3(1,0,0), float3(0,1,0), pi/2), transform));
+            DrawTable(raster, boxPoints, mul(Transforms.RotateRespectTo(float3(1, 0, 0), float3(0, 1, 0), pi / 2), transform));
         }
 
-        private static void DrawTable (Raster raster, float3[] boxPoints, float4x4 transform)
+        private static void DrawTable(Raster raster, float3[] boxPoints, float4x4 transform)
         {
-            DrawTableLeg(raster, boxPoints, mul(Transforms.Translate(0.2f,0,0.2f), transform));
-            DrawTableLeg(raster, boxPoints, mul(Transforms.Translate(1.6f,0,0.2f), transform));
-            DrawTableLeg(raster, boxPoints, mul(Transforms.Translate(1.6f,0,1.6f), transform));
-            DrawTableLeg(raster, boxPoints, mul(Transforms.Translate(0.2f,0,1.6f), transform));
+            DrawTableLeg(raster, boxPoints, mul(Transforms.Translate(0.2f, 0, 0.2f), transform));
+            DrawTableLeg(raster, boxPoints, mul(Transforms.Translate(1.6f, 0, 0.2f), transform));
+            DrawTableLeg(raster, boxPoints, mul(Transforms.Translate(1.6f, 0, 1.6f), transform));
+            DrawTableLeg(raster, boxPoints, mul(Transforms.Translate(0.2f, 0, 1.6f), transform));
             DrawTableTop(raster, boxPoints, mul(Transforms.Translate(0, 2, 0), transform));
         }
-        
+
         private static void DrawTableTop(Raster raster, float3[] boxPoints, float4x4 transform)
         {
             float4x4 transformingIntoLeg = mul(Transforms.Scale(2.2f, 0.2f, 2.2f), transform);

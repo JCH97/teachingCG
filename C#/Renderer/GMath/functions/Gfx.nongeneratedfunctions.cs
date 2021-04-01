@@ -139,6 +139,39 @@ namespace GMath
             return __random.random2();
         }
 
+        public static float3 randomInCylinder(float _base)
+        {
+            float r1 = random();
+            float two_pi_by_r1 = two_pi * r1;
+            float x = cos(two_pi_by_r1);
+            float y = sin(two_pi_by_r1);
+            float z = random() + _base;
+            return float3(x, z, y);
+
+        }
+        public static float3 randomInCircle(int pos_z)
+        {
+            float r1 = random();
+            float r2 = random() * 2 - 1;
+            float sqR2 = r2 * r2;
+            float two_pi_by_r1 = two_pi * r1;
+            float sqrt_of_one_minu_qrR2 = sqrt(max(0, 1 - sqR2));
+            float x = cos(two_pi_by_r1) * sqrt_of_one_minu_qrR2;
+            float y = sin(two_pi_by_r1) * sqrt_of_one_minu_qrR2;
+            return float3(x, pos_z, y);
+        }
+        public static float3 randomInSphere()
+        {
+            float r1 = random();
+            float r2 = random() * 2 - 1;
+            float sqR2 = r2 * r2;
+            float two_pi_by_r1 = two_pi * r1;
+            float sqrt_of_one_minu_qrR2 = sqrt(max(0, 1 - sqR2));
+            float x = cos(two_pi_by_r1) * sqrt_of_one_minu_qrR2;
+            float y = sin(two_pi_by_r1) * sqrt_of_one_minu_qrR2;
+            float z = r2;
+            return float3(x, y, z);
+        }
         public static float3 randomInBox()
         {
             float u = random() * 2 - 1, v = random() * 2 - 1;
