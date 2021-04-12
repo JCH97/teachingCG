@@ -70,7 +70,29 @@ namespace Renderer
             return EvalBezier(nestedPoints, t);
         }
 
+        static Mesh<MyVertex> createSphere()
+        {
+            // Parametric representation of a sphere.
+            return Manifold<MyVertex>.Surface(30, 30, (u, v) =>
+            {
+                float alpha = u * 2 * pi;
+                float beta = pi / 2 - v * pi;
+                return float3(cos(alpha) * cos(beta), sin(beta), sin(alpha) * cos(beta));
+            });
+        }
+        static Mesh<MyVertex> createCilinder()
+        {
+            return Manifold<MyVertex>.Surface(30, 30, (u, v) =>
+              {
+                  float alpha = 2 * pi * u;
+                  float x = cos(alpha);
+                  float y = sin(alpha);
+                  float z = v;
+                  return float3(x, z, y);
 
+              });
+
+        }
         static Mesh<MyVertex> CreateModel()
         {
             // Parametric representation of a sphere.
@@ -82,34 +104,36 @@ namespace Renderer
             //});
 
             // Generative model
-            //return Manifold<MyVertex>.Generative(30, 30,
-            //    // g function
-            //    u => float3(cos(2 * pi * u), 0, sin(2 * pi * u)),
-            //    // f function
-            //    (p, v) => p + float3(cos(v * pi), 2*v-1, 0)
-            //);
+            return Manifold<MyVertex>.Generative(30, 30,
+                // g function
+                u => float3(cos(2 * pi * u), 0, sin(2 * pi * u)),
+                // f function
+                (p, v) => p + float3(cos(v * pi), 2 * v - 1, 0)
+            );
 
             // Revolution Sample with Bezier
-            float3[] contourn =
-            {
-                float3(0, -.5f,0),
-                float3(0.8f, -0.5f,0),
-                float3(1f, -0.2f,0),
-                float3(0.6f,1,0),
-                float3(0,1,0)
-            };
-            return Manifold<MyVertex>.Revolution(30, 30, t => EvalBezier(contourn, t), float3(0, 1, 0));
+            // float3[] contourn =
+            // {
+            //     float3(0, -.5f,0),
+            //     float3(0.8f, -0.5f,0),
+            //     float3(1f, -0.2f,0),
+            //     float3(0.6f,1,0),
+            //     float3(0,1,0)
+            // };
+            // return Manifold<MyVertex>.Revolution(30, 30, t => EvalBezier(contourn, t), float3(0, 1, 0));
         }
-        
+
         private static void GeneratingMeshes(Raster<MyVertex, MyProjectedVertex> render)
         {
             render.ClearRT(float4(0, 0, 0.2f, 1)); // clear with color dark blue.
 
-            var primitive = CreateModel();
+            var cilinder1 = createCilinder();
+            var sphere = createSphere();
+            cilinder1 = cilinder1.Transform(Transforms.Scale((float)0.5,(float)0.5,(float)0.5));
 
             /// Convert to a wireframe to render. Right now only lines can be rasterized.
-            primitive = primitive.ConvertTo(Topology.Lines);
-
+            cilinder1 = cilinder1.ConvertTo(Topology.Lines);
+            sphere = sphere.ConvertTo(Topology.Lines);
             #region viewing and projecting
 
             float4x4 viewMatrix = Transforms.LookAtLH(float3(2, 1f, 4), float3(0, 0, 0), float3(0, 1, 0));
@@ -133,7 +157,8 @@ namespace Renderer
             #endregion
 
             // Draw the mesh.
-            render.DrawMesh(primitive);
+            render.DrawMesh(sphere);
+            render.DrawMesh(cilinder1);
         }
     }
 }
